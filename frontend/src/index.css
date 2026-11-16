@@ -1,0 +1,53 @@
+
+body {
+    background-color: #141414;
+    color: white;
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+}
+
+.movie-card {
+    background-color: #242424;
+    color: white;
+    border: 1px solid #383838;
+    transition: transform 0.3s;
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+}
+
+.movie-poster {
+    height: 400px;
+    object-fit: cover;
+}
+
+.booking-box {
+    background-color: #242424;
+    border: 1px solid #383838;
+    max-width: 650px;
+    margin: auto;
+}
+
+.booking-box .form-control,
+.booking-box .form-select {
+    background-color: #333;
+    color: white;
+    border-color: #555;
+}
+
+.booking-box .form-select option {
+    background-color: #333;
+    color: white;
+}
+
+.confirmation-box {
+    background-color: #242424;
+    border: 1px solid #383838;
+    max-width: 650px;
+    margin: auto;
+}
+
+footer {
+    margin-top: 60px;
+}

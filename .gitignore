@@ -1,0 +1,29 @@
+
+# Frontend dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+Backend/.env
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+Backend/__pycache__/
+
+# Local database
+*.db
+*.sqlite3
+Backend/moviex.db
+
+# Postman local data
+.postman/
+
+# Postman local data
+.postman/
+postman/
