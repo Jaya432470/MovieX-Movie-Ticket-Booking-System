@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 
+from urllib.parse import urlparse
+
 
 # app = Flask(__name__)
 # CORS(app)
@@ -113,57 +115,46 @@ def admin_dashboard():
     
     
 
+
 # ADMIN API - ADD NEW MOVIE
 
 @app.route("/admin/movies", methods=["POST"])
 @admin_required
 def add_movie():
 
-    # Receive movie details and poster image
-    data = request.form
-    image = request.files.get("image")
-
-    # Check required movie fields
-    if not all(data.get(key) for key in ["name", "language", "show_time"]):
-        return jsonify({
-            "error": "Movie name, language and show time are required"
-        }), 400
-
-    # Check poster image
-    if not image or image.filename == "":
-        return jsonify({"error": "Movie poster is required"}), 400
-
-    if not allowed_image(image.filename):
-        return jsonify({
-            "error": "Only PNG, JPG, JPEG and WEBP images are allowed"
-        }), 400
+    # Receive movie details as JSON
+    data = request.get_json(silent=True) or {}
 
     # Get movie details
-    name = data["name"].strip()
-    language = data["language"].strip()
-    show_time = data["show_time"].strip()
+    name = (data.get("name") or "").strip()
+    language = (data.get("language") or "").strip()
+    show_time = (data.get("show_time") or "").strip()
+    poster_url = (data.get("poster") or "").strip()
 
-    if not name or not language or not show_time:
-        return jsonify({"error": "Fields cannot be empty"}), 400
+    # Check required movie fields
+    if not all([name, language, show_time, poster_url]):
+        return jsonify({
+            "error": "Movie name, language, show time and poster URL are required"
+        }), 400
 
-    # Generate a unique poster filename
-    extension = image.filename.rsplit(".", 1)[1].lower()
-    poster_filename = f"{uuid.uuid4().hex}.{extension}"
+    # Validate poster URL
+    parsed_url = urlparse(poster_url)
+
+    if parsed_url.scheme not in ["http", "https"] or not parsed_url.netloc:
+        return jsonify({
+            "error": "Please provide a valid image URL"
+        }), 400
 
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        # Save poster inside static/uploads
-        image.save(
-            os.path.join(app.config["UPLOAD_FOLDER"], poster_filename)
-        )
 
         # Insert movie into Movies table
         cursor.execute("""
             INSERT INTO Movies (name, language, show_time, poster)
             VALUES (?, ?, ?, ?)
-        """, (name, language, show_time, poster_filename))
+        """, (name, language, show_time, poster_url))
 
         # Get automatically generated movie ID
         movie_id = cursor.lastrowid
@@ -179,9 +170,11 @@ def add_movie():
         seats = []
 
         for category, details in categories.items():
+
             prefix, price = details
 
             for i in range(1, 11):
+
                 seat_number = f"{prefix}{i}"
 
                 seats.append((
@@ -206,11 +199,12 @@ def add_movie():
             "name": name,
             "language": language,
             "show_time": show_time,
-            "poster": poster_filename,
+            "poster": poster_url,
             "total_seats_created": len(seats)
         }), 201
 
     except Exception as error:
+
         conn.rollback()
         print("Add movie error:", error)
 
@@ -223,42 +217,43 @@ def add_movie():
 
 
 
+
 # ADMIN API - UPDATE MOVIE
 
 @app.route("/admin/movies/<int:movie_id>", methods=["PUT"])
 @admin_required
 def update_movie(movie_id):
 
-    # Receive movie details and optional poster
-    data = request.form
-    image = request.files.get("image")
+    # Receive movie details as JSON
+    data = request.get_json(silent=True) or {}
 
-    if not all(data.get(key) for key in ["name", "language", "show_time"]):
+    name = (data.get("name") or "").strip()
+    language = (data.get("language") or "").strip()
+    show_time = (data.get("show_time") or "").strip()
+    poster_url = (data.get("poster") or "").strip()
+
+    # Check required fields
+    if not all([name, language, show_time, poster_url]):
         return jsonify({
-            "error": "Movie name, language and show time are required"
+            "error": "All movie fields and poster URL are required"
         }), 400
 
-    name = data["name"].strip()
-    language = data["language"].strip()
-    show_time = data["show_time"].strip()
+    # Validate poster URL
+    parsed_url = urlparse(poster_url)
 
-    if not name or not language or not show_time:
-        return jsonify({"error": "Fields cannot be empty"}), 400
-
-    # Validate poster only if a new image is uploaded
-    if image and image.filename:
-        if not allowed_image(image.filename):
-            return jsonify({
-                "error": "Only PNG, JPG, JPEG and WEBP images are allowed"
-            }), 400
+    if parsed_url.scheme not in ["http", "https"] or not parsed_url.netloc:
+        return jsonify({
+            "error": "Please provide a valid image URL"
+        }), 400
 
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        # Check whether movie exists and get old poster
+
+        # Check whether movie exists
         cursor.execute("""
-            SELECT poster
+            SELECT movie_id
             FROM Movies
             WHERE movie_id = ?
         """, (movie_id,))
@@ -266,25 +261,16 @@ def update_movie(movie_id):
         movie = cursor.fetchone()
 
         if movie is None:
-            return jsonify({"error": "Movie not found"}), 404
-
-        poster_filename = movie[0]
-
-        # If a new poster is uploaded
-        if image and image.filename:
-            extension = image.filename.rsplit(".", 1)[1].lower()
-            poster_filename = f"{uuid.uuid4().hex}.{extension}"
-
-            image.save(
-                os.path.join(app.config["UPLOAD_FOLDER"], poster_filename)
-            )
+            return jsonify({
+                "error": "Movie not found"
+            }), 404
 
         # Update movie details
         cursor.execute("""
             UPDATE Movies
             SET name = ?, language = ?, show_time = ?, poster = ?
             WHERE movie_id = ?
-        """, (name, language, show_time, poster_filename, movie_id))
+        """, (name, language, show_time, poster_url, movie_id))
 
         conn.commit()
 
@@ -294,10 +280,11 @@ def update_movie(movie_id):
             "name": name,
             "language": language,
             "show_time": show_time,
-            "poster": poster_filename
+            "poster": poster_url
         }), 200
 
     except Exception as error:
+
         conn.rollback()
         print("Update movie error:", error)
 
@@ -307,6 +294,7 @@ def update_movie(movie_id):
 
     finally:
         conn.close()
+
 
 
 

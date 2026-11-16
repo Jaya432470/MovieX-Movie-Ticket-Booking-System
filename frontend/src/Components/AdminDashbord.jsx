@@ -13,7 +13,7 @@ function AdminDashboard() {
 
     const [editingId, setEditingId] = useState(null);
 
-    const [poster, setPoster] = useState(null);
+    const [poster, setPoster] = useState("");
 
     const navigate = useNavigate();
 
@@ -51,30 +51,23 @@ function AdminDashboard() {
         fetchMovies();
     }, []);
 
-    // Add or Update Movie
-    const handleSaveMovie = async (e) => {
+    
+// Add or Update Movie
+const handleSaveMovie = async (e) => {
+
     e.preventDefault();
 
     const token = localStorage.getItem("adminToken");
 
-    // Check whether a poster is selected for a new movie
-    if (!editingId && !poster) {
-        alert("Please select a movie poster!");
-        return;
-    }
-
     try {
 
-        // Create FormData to send text and image together
-        const movieData = new FormData();
-
-        movieData.append("name", name);
-        movieData.append("language", language);
-        movieData.append("show_time", showTime);
-
-        if (poster) {
-            movieData.append("image", poster);
-        }
+        // Prepare movie details as JSON
+        const movieData = {
+            name,
+            language,
+            show_time: showTime,
+            poster
+        };
 
         if (editingId) {
 
@@ -103,37 +96,42 @@ function AdminDashboard() {
             );
 
             alert("Movie Added Successfully!");
+
         }
 
         // Clear form after successful save
         setName("");
         setLanguage("");
         setShowTime("");
+        setPoster("");
         setEditingId(null);
-        setPoster(null);
 
         fetchMovies();
 
     } catch (error) {
 
         console.log(error.response?.data || error);
-        alert("Unable to save movie!");
+        alert(error.response?.data?.error || "Unable to save movie!");
 
     }
+
 };
 
-    // Edit Movie
-    const handleEdit = (movie) => {
 
-        setEditingId(movie.movie_id);
+// Edit Movie
+const handleEdit = (movie) => {
 
-        setName(movie.name);
-        setLanguage(movie.language);
-        setShowTime(movie.show_time);
+    setEditingId(movie.movie_id);
 
-        window.scrollTo(0, 0);
+    setName(movie.name);
+    setLanguage(movie.language);
+    setShowTime(movie.show_time);
+    setPoster(movie.poster);
 
-    };
+    window.scrollTo(0, 0);
+
+};
+
 
     // Delete Movie
     const handleDelete = async (movieId) => {
@@ -355,12 +353,31 @@ function AdminDashboard() {
                                 </label>
 
                                 <input
-                                    type="file"
+                                    type="url"
                                     className="form-control"
-                                    accept="image/png, image/jpeg, image/webp"
-                                    onChange={(e) => setPoster(e.target.files[0])}
-                                    required={!editingId}
+                                    placeholder="Paste movie poster image URL"
+                                    value={poster}
+                                    onChange={(e) => setPoster(e.target.value)}
+                                    required
                                 />
+
+                                {poster && (
+                                    <div className="mt-3">
+                                        <img
+                                            src={poster}
+                                            alt="Movie Poster Preview"
+                                            style={{
+                                                width: "130px",
+                                                height: "180px",
+                                                objectFit: "cover",
+                                                borderRadius: "10px"
+                                            }}
+                                            onError={(e) => {
+                                                e.target.style.display = "none";
+                                            }}
+                                        />
+                                    </div>
+                                )}
 
                             </div>      
 
@@ -385,6 +402,7 @@ function AdminDashboard() {
                                         setName("");
                                         setLanguage("");
                                         setShowTime("");
+                                        setPoster("");
                                     }}
                                 >
                                     Cancel

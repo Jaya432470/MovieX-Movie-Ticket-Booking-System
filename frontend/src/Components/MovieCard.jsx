@@ -10,9 +10,12 @@ function MovieCard({ movie }) {
     };
 
     const poster = movie.poster
-    ? `http://127.0.0.1:5000/static/uploads/${movie.poster}`
+    ? movie.poster.startsWith("http")
+        ? movie.poster
+        : `http://127.0.0.1:5000/static/uploads/${movie.poster}`
     : movieImages[movie.id];
 
+    
     return (
 
         <div className="col-12 col-sm-6 col-lg-4 col-xl-3 mb-4">
